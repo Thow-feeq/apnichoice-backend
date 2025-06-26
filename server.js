@@ -33,19 +33,27 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 4000;
 
-// Initialize uploads directory
+// Stripe Webhook (must be before express.json())
+app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
+
+// Middleware
+app.use(express.json()); // placed after Stripe raw body
+app.use(cookieParser());
+app.use(cors({
+  origin: [
+    'http://localhost:5173',
+    'https://apnichoice-frontend.vercel.app' // Replace with your actual frontend URL
+  ],
+  credentials: true,
+}));
+
+// Static files
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
   console.log('📁 Created uploads folder');
 }
-
-// Middleware stack
-app.use(express.json());
-app.use(cookieParser());
-app.use(cors({ origin: 'http://localhost:5173', credentials: true }));
 app.use('/uploads', express.static(uploadsDir));
-app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
 
 // File Upload
 const storage = multer.diskStorage({
@@ -58,7 +66,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   res.json({ success: true, url: `/uploads/${req.file.filename}` });
 });
 
-// Route Definitions
+// Routes
 app.get('/', (req, res) => res.send('✅ API is working'));
 app.use('/api/user', userRouter);
 app.use('/api/seller', sellerRouter);
@@ -67,12 +75,11 @@ app.use('/api/cart', cartRouter);
 app.use('/api/address', addressRouter);
 app.use('/api/order', orderRouter);
 app.use('/api/coupon', couponRoutes);
-app.use('/api/users', userRouter); // Consider removing duplicate route
+app.use('/api/auth', authRoutes);
 app.use('/api/seller/category', categoryRoutes);
 app.use('/api/category', categoryRoutes);
-app.use('/api/auth', authRoutes);
 
-// Conditional server start
+// Server start
 if (process.env.NODE_ENV !== 'test') {
   const initialize = async () => {
     await connectDB();
@@ -88,11 +95,11 @@ if (process.env.NODE_ENV !== 'test') {
         email: testEmail,
         password: 'dummy123',
       });
-      console.log('✅ Test user created with email and phone');
+      console.log('✅ Test user created');
     }
 
     app.listen(port, () => {
-      console.log(`🚀 Server running at http://localhost:${port}`);
+      console.log(`🚀 Server running on port ${port}`);
     });
   };
 
