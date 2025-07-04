@@ -25,6 +25,8 @@ import authRoutes from './routes/authRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import newsletterRoutes from './routes/newsletterRoute.js';
 import { stripeWebhooks } from './controllers/orderController.js';
+import paymentRoutes from './routes/paymentRoutes.js';
+
 
 import User from './models/User.js';
 
@@ -80,6 +82,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/seller/category', categoryRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/newsletter', newsletterRoutes);
+app.use('/api/payment', paymentRoutes);
+
 
 // Server start
 if (process.env.NODE_ENV !== 'test') {
