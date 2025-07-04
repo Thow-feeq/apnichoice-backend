@@ -2,22 +2,21 @@ import User from "../models/User.js";
 import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
-// Register User : /api/user/register
+// Register User: POST /api/user/register
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
 
     if (!name || !email || !password) {
-      return res.json({ success: false, message: 'Missing Details' });
+      return res.status(400).json({ success: false, message: 'Missing Details' });
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.json({ success: false, message: 'User already exists' });
+      return res.status(400).json({ success: false, message: 'User already exists' });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
     const user = await User.create({ name, email, password: hashedPassword });
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -29,38 +28,35 @@ export const register = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({
+    return res.status(201).json({
       success: true,
-      token,
-      user: {
-        email: user.email,
-        name: user.name,
-      },
+      message: 'Registration successful',
+      user: { email: user.email, name: user.name },
     });
 
   } catch (error) {
     console.error(error.message);
-    res.json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Login User : /api/user/login
+// Login User: POST /api/user/login
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res.json({ success: false, message: 'Email and password are required' });
+      return res.status(400).json({ success: false, message: 'Email and password are required' });
     }
 
     const existingUser = await User.findOne({ email });
     if (!existingUser) {
-      return res.json({ success: false, message: 'Invalid email or password' });
+      return res.status(400).json({ success: false, message: 'Invalid email or password' });
     }
 
     const isMatch = await bcrypt.compare(password, existingUser.password);
     if (!isMatch) {
-      return res.json({ success: false, message: 'Invalid email or password' });
+      return res.status(400).json({ success: false, message: 'Invalid email or password' });
     }
 
     const token = jwt.sign({ id: existingUser._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
@@ -72,43 +68,43 @@ export const login = async (req, res) => {
       maxAge: 7 * 24 * 60 * 60 * 1000,
     });
 
-    return res.json({
+    return res.status(200).json({
       success: true,
-      token,
-      user: {
-        email: existingUser.email,
-        name: existingUser.name,
-      },
+      message: 'Login successful',
+      user: { email: existingUser.email, name: existingUser.name },
     });
 
   } catch (error) {
     console.error(error.message);
-    res.json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Check Auth : /api/user/is-auth
+// Check Auth: GET /api/user/is-auth
 export const isAuth = async (req, res) => {
   try {
-    const { userId } = req.body;
-    if (!userId) {
-      return res.json({ success: false, message: 'Not Authorized' });
+    const token = req.cookies.token;
+
+    if (!token) {
+      return res.status(401).json({ success: false, message: 'Unauthorized: No token provided' });
     }
 
-    const user = await User.findById(userId).select("-password");
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id).select('-password');
+
     if (!user) {
-      return res.json({ success: false, message: 'User not found' });
+      return res.status(401).json({ success: false, message: 'Unauthorized: User not found' });
     }
 
-    return res.json({ success: true, user });
+    return res.status(200).json({ success: true, user });
 
   } catch (error) {
     console.error(error.message);
-    res.json({ success: false, message: error.message });
+    res.status(401).json({ success: false, message: 'Unauthorized: Invalid token' });
   }
 };
 
-// Logout User : /api/user/logout
+// Logout User: GET /api/user/logout
 export const logout = async (req, res) => {
   try {
     res.clearCookie('token', {
@@ -117,17 +113,17 @@ export const logout = async (req, res) => {
       sameSite: 'None',
     });
 
-    return res.json({ success: true, message: "Logged Out" });
+    return res.status(200).json({ success: true, message: 'Logged out successfully' });
   } catch (error) {
     console.error(error.message);
-    res.json({ success: false, message: error.message });
+    res.status(500).json({ success: false, message: error.message });
   }
 };
 
-// Admin: Get User List — /api/user/list
+// Admin: Get Users: GET /api/user/list
 export const userList = async (req, res) => {
   try {
-    const users = await User.find({}, "-password");
+    const users = await User.find({}, '-password');
     res.status(200).json({ success: true, users });
   } catch (error) {
     console.error(error.message);
@@ -135,7 +131,7 @@ export const userList = async (req, res) => {
   }
 };
 
-// Admin: Get User Count — /api/user/count
+// Admin: Get User Count: GET /api/user/count
 export const getUserCount = async (req, res) => {
   try {
     const count = await User.countDocuments();
