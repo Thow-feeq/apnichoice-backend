@@ -23,7 +23,7 @@ export const register = async (req, res) => {
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         res.cookie('token', token, {
-            httpsOnly: true,
+            httpOnly: true,
             secure: true,              // ✅ Always true for HTTPS
             sameSite: 'None',          // ✅ Required for cross-origin
             maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
@@ -60,7 +60,7 @@ export const login = async (req, res) => {
         const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
         res.cookie('token', token, {
-            httpsOnly: true,
+            httpOnly: true,
             secure: true,              // ✅ Always true for HTTPS
             sameSite: 'None',          // ✅ Required for cross-origin
             maxAge: 7 * 24 * 60 * 60 * 1000,
@@ -85,12 +85,12 @@ export const userList = async (req, res) => {
     }
 };
 export const getUserCount = async (req, res) => {
-    try {
-        const count = await User.countDocuments();
-        res.status(200).json({ success: true, count });
-    } catch (error) {
-        res.status(500).json({ success: false, message: 'Failed to get user count', error: error.message });
-    }
+  try {
+    const count = await User.countDocuments();
+    res.status(200).json({ success: true, count });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Failed to get user count', error: error.message });
+  }
 };
 
 
@@ -112,7 +112,7 @@ export const isAuth = async (req, res) => {
 export const logout = async (req, res) => {
     try {
         res.clearCookie('token', {
-            httpsOnly: true,
+            httpOnly: true,
             secure: true,              // ✅ Always true for HTTPS
             sameSite: 'None',          // ✅ Required for cross-origin
         });
