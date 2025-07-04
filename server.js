@@ -1,5 +1,3 @@
-// server.js
-
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -10,7 +8,6 @@ import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
 import multer from 'multer';
-
 import connectDB from './configs/db.js';
 import connectCloudinary from './configs/cloudinary.js';
 
@@ -27,7 +24,6 @@ import newsletterRoutes from './routes/newsletterRoute.js';
 import { stripeWebhooks } from './controllers/orderController.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 
-
 import User from './models/User.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -36,29 +32,28 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 4000;
 
-// Stripe Webhook (must be before express.json())
+// ✅ Stripe Webhook (no JSON parsing here)
 app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
 
-// Middleware
-app.use(express.json()); // placed after Stripe raw body
+// ✅ Middlewares
+app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
   origin: [
+    'https://apnichoice-frontend.vercel.app',
     'http://localhost:5173',
-    'https://apnichoice-frontend.vercel.app' // Replace with your actual frontend URL
   ],
-  credentials: true,
+  credentials: true,  // ✅ Must be true to allow cookies
 }));
 
-// Static files
+// ✅ Static Files
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log('📁 Created uploads folder');
 }
 app.use('/uploads', express.static(uploadsDir));
 
-// File Upload
+// ✅ File Upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
@@ -69,7 +64,7 @@ app.post('/api/upload', upload.single('file'), (req, res) => {
   res.json({ success: true, url: `/uploads/${req.file.filename}` });
 });
 
-// Routes
+// ✅ Routes
 app.get('/', (req, res) => res.send('✅ API is working'));
 app.use('/api/user', userRouter);
 app.use('/api/seller', sellerRouter);
@@ -84,29 +79,23 @@ app.use('/api/category', categoryRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/payment', paymentRoutes);
 
-
-// Server start
+// ✅ Start Server
 if (process.env.NODE_ENV !== 'test') {
   const initialize = async () => {
     await connectDB();
     await connectCloudinary();
 
-    const testPhone = '6374540634';
-    const testEmail = 'test@example.com';
-    const testUser = await User.findOne({ $or: [{ phone: testPhone }, { email: testEmail }] });
+    const testUser = await User.findOne({ email: 'test@example.com' });
     if (!testUser) {
       await User.create({
         name: 'Test User',
-        phone: testPhone,
-        email: testEmail,
+        phone: '6374540634',
+        email: 'test@example.com',
         password: 'dummy123',
       });
-      console.log('✅ Test user created');
     }
 
-    app.listen(port, () => {
-      console.log(`🚀 Server running on port ${port}`);
-    });
+    app.listen(port, () => console.log(`🚀 Server running on ${port}`));
   };
 
   initialize();
