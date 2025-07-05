@@ -1,26 +1,13 @@
 import express from 'express';
-import { 
-  isAuth, 
-  login, 
-  logout, 
-  register, 
-  userList, 
-  getUserCount 
-} from '../controllers/userController.js';
-import authUser from '../middlewares/authUser.js';
+import { isAuth, login, logout, register, userList, getUserCount } from '../controllers/userController.js';
 
-const userRouter = express.Router();
+const router = express.Router();
 
-// Public Routes
-userRouter.post('/register', register);
-userRouter.post('/login', login);
+router.post('/register', register);
+router.post('/login', login);
+router.get('/is-auth', isAuth);   // ✅ No middleware needed if you're checking inside isAuth
+router.get('/logout', logout);
+router.get('/userList', userList);
+router.get('/count', getUserCount);
 
-// Protected Routes (requires auth)
-userRouter.get('/is-auth', authUser, isAuth);
-userRouter.get('/logout', authUser, logout);
-
-// Admin Routes (you can add role checks inside the controller if needed)
-userRouter.get('/userList', authUser, userList);
-userRouter.get('/count', authUser, getUserCount);
-
-export default userRouter;
+export default router;
