@@ -28,7 +28,7 @@ export const isSellerAuthenticated = async (req, res, next) => {
 
 // ✅ For User: Token from Cookies (for browser sessions)
 export const isUserAuthenticated = async (req, res, next) => {
-  const token = req.cookies.token;
+  const token = req.cookies.token || req.headers.authorization?.split(" ")[1];
 
   if (!token) {
     return res.status(401).json({ success: false, message: 'Not authorized, no token' });
