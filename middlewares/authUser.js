@@ -1,10 +1,10 @@
-// middlewares/authUser.js
+// authUser.js
 import jwt from 'jsonwebtoken';
 
 const authUser = async (req, res, next) => {
   let token = req.cookies.token;
 
-  // ✅ Fallback to Authorization header if cookie missing
+  // ✅ If not in cookies, try Authorization header
   if (!token && req.headers.authorization?.startsWith("Bearer")) {
     token = req.headers.authorization.split(" ")[1];
   }
@@ -14,15 +14,15 @@ const authUser = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.id) {
-      req.body.userId = decoded.id;
+    const tokenDecode = jwt.verify(token, process.env.JWT_SECRET);
+    if (tokenDecode.id) {
+      req.body.userId = tokenDecode.id;
       next();
     } else {
       return res.status(401).json({ success: false, message: 'Invalid token' });
     }
   } catch (error) {
-    return res.status(401).json({ success: false, message: error.message });
+    res.status(401).json({ success: false, message: error.message });
   }
 };
 

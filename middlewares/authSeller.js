@@ -1,10 +1,9 @@
-// middlewares/authSeller.js
+// authSeller.js
 import jwt from 'jsonwebtoken';
 
 const authSeller = async (req, res, next) => {
   let token = req.cookies.sellerToken;
 
-  // ✅ Fallback to Authorization header if cookie missing
   if (!token && req.headers.authorization?.startsWith("Bearer")) {
     token = req.headers.authorization.split(" ")[1];
   }
@@ -14,14 +13,14 @@ const authSeller = async (req, res, next) => {
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    if (decoded.email === process.env.SELLER_EMAIL) {
+    const tokenDecode = jwt.verify(token, process.env.JWT_SECRET);
+    if (tokenDecode.email === process.env.SELLER_EMAIL) {
       next();
     } else {
-      return res.status(401).json({ success: false, message: 'Invalid seller credentials' });
+      return res.status(401).json({ success: false, message: 'Invalid seller' });
     }
   } catch (error) {
-    return res.status(401).json({ success: false, message: error.message });
+    res.status(401).json({ success: false, message: error.message });
   }
 };
 
