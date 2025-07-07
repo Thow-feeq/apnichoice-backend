@@ -1,115 +1,108 @@
 import User from "../models/User.js";
-import bcrypt from 'bcryptjs';
-import jwt from 'jsonwebtoken';
+import bcrypt from "bcryptjs";
+import jwt from "jsonwebtoken";
 
-// ✅ Register User : /api/user/register
+// Register User : /api/user/register
 export const register = async (req, res) => {
   try {
     const { name, email, password } = req.body;
+
     if (!name || !email || !password) {
-      return res.json({ success: false, message: 'Missing Details' });
+      return res.json({ success: false, message: "Missing details" });
     }
 
     const existingUser = await User.findOne({ email });
     if (existingUser) {
-      return res.json({ success: false, message: 'User already exists' });
+      return res.json({ success: false, message: "User already exists" });
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
     const user = await User.create({ name, email, password: hashedPassword });
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
     });
 
-    return res.json({ success: true, token, user: { _id: user._id, name: user.name, email: user.email } });
+    res.json({
+      success: true,
+      token,
+      user: { _id: user._id, name: user.name, email: user.email },
+    });
   } catch (error) {
-    console.log(error.message);
+    console.error("Register Error:", error.message);
     res.json({ success: false, message: error.message });
   }
 };
 
-// ✅ Login User : /api/user/login
+// Login User : /api/user/login
 export const login = async (req, res) => {
   try {
     const { email, password } = req.body;
+
     if (!email || !password) {
-      return res.json({ success: false, message: 'Email and password are required' });
+      return res.json({ success: false, message: "Email and password are required" });
     }
 
     const user = await User.findOne({ email });
     if (!user) {
-      return res.json({ success: false, message: 'Invalid email or password' });
+      return res.json({ success: false, message: "Invalid email or password" });
     }
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) {
-      return res.json({ success: false, message: 'Invalid email or password' });
+      return res.json({ success: false, message: "Invalid email or password" });
     }
 
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
-
-    res.cookie('token', token, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
+    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
     });
 
-    return res.json({ success: true, token, user: { _id: user._id, name: user.name, email: user.email } });
+    res.json({
+      success: true,
+      token,
+      user: { _id: user._id, name: user.name, email: user.email },
+    });
   } catch (error) {
-    console.log(error.message);
+    console.error("Login Error:", error.message);
     res.json({ success: false, message: error.message });
   }
 };
 
-// ✅ Check Auth : /api/user/is-auth
 // Check Auth : /api/user/is-auth
 export const isAuth = async (req, res) => {
   try {
-    // ✅ Only check Authorization header (Bearer token)
     const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ success: false, message: 'Not authorized, no token in header' });
+      return res.status(401).json({ success: false, message: "No token provided" });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findById(decoded.id).select('-password');
+    const user = await User.findById(decoded.id).select("-password");
 
     if (!user) {
-      return res.status(401).json({ success: false, message: 'User not found' });
+      return res.status(401).json({ success: false, message: "User not found" });
     }
 
-    return res.json({ success: true, user });
+    res.json({ success: true, user });
   } catch (error) {
-    console.log("Auth error:", error.message);
-    return res.status(401).json({ success: false, message: 'Not authorized' });
+    console.error("Auth Check Error:", error.message);
+    res.status(401).json({ success: false, message: "Invalid or expired token" });
   }
 };
 
-// ✅ Logout User : /api/user/logout
+// Logout User : /api/user/logout
 export const logout = async (req, res) => {
   try {
-    res.clearCookie('token', {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-    });
-
-    return res.json({ success: true, message: "Logged Out" });
+    // No cookie to clear — just respond
+    res.json({ success: true, message: "Logged out successfully" });
   } catch (error) {
-    console.log(error.message);
+    console.error("Logout Error:", error.message);
     res.json({ success: false, message: error.message });
   }
 };
 
-// ✅ Admin: Get User List — GET /api/user/list
+// Admin: Get User List — GET /api/user/list
 export const userList = async (req, res) => {
   try {
     const users = await User.find({}, "-password");
@@ -120,12 +113,13 @@ export const userList = async (req, res) => {
   }
 };
 
-// ✅ Admin: Get User Count — GET /api/user/count
+// Admin: Get User Count — GET /api/user/count
 export const getUserCount = async (req, res) => {
   try {
     const count = await User.countDocuments();
     res.status(200).json({ success: true, count });
   } catch (error) {
-    res.status(500).json({ success: false, message: 'Failed to get user count', error: error.message });
+    console.error("User Count Error:", error.message);
+    res.status(500).json({ success: false, message: error.message });
   }
 };
