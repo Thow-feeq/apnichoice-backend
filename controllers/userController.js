@@ -69,18 +69,14 @@ export const login = async (req, res) => {
 };
 
 // ✅ Check Auth : /api/user/is-auth
+// Check Auth : /api/user/is-auth
 export const isAuth = async (req, res) => {
   try {
-    // Get token from header first
-    let token = req.headers.authorization?.split(" ")[1];
-
-    // Fallback to cookie
-    if (!token) {
-      token = req.cookies.token;
-    }
+    // ✅ Only check Authorization header (Bearer token)
+    const token = req.headers.authorization?.split(" ")[1];
 
     if (!token) {
-      return res.status(401).json({ success: false, message: 'Not authorized, no token' });
+      return res.status(401).json({ success: false, message: 'Not authorized, no token in header' });
     }
 
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
@@ -105,6 +101,7 @@ export const logout = async (req, res) => {
       secure: process.env.NODE_ENV === 'production',
       sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
     });
+
     return res.json({ success: true, message: "Logged Out" });
   } catch (error) {
     console.log(error.message);
