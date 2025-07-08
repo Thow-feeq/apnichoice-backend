@@ -22,12 +22,12 @@ export const register = async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    res.cookie('token', token, {
-      httpOnly: true, // Prevent JavaScript to access cookie
-      secure: process.env.NODE_ENV === 'production', // Use secure cookies in production
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict', // CSRF protection
-      maxAge: 7 * 24 * 60 * 60 * 1000, // Cookie expiration time
-    })
+    res.cookie("token", token, {
+      httpOnly: true,
+      secure: true,           // ✅ Required for cross-site cookie in HTTPS
+      sameSite: "none",       // ✅ Allows sending cookie from different origin
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
 
     return res.json({ success: true, token, user: { email: user.email, name: user.name } })
   } catch (error) {
@@ -57,12 +57,12 @@ export const login = async (req, res) => {
 
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '7d' });
 
-    res.cookie('token', token, {
+    res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    })
+      secure: true,           // ✅ Required for cross-site cookie in HTTPS
+      sameSite: "none",       // ✅ Allows sending cookie from different origin
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+    });
 
     return res.json({ success: true, token, user: { email: user.email, name: user.name } })
   } catch (error) {
@@ -124,10 +124,11 @@ export const isAuth = async (req, res) => {
 
 export const logout = async (req, res) => {
   try {
-    res.clearCookie('token', {
+    res.cookie("token", token, {
       httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'strict',
+      secure: true,           // ✅ Required for cross-site cookie in HTTPS
+      sameSite: "none",       // ✅ Allows sending cookie from different origin
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
     });
     return res.json({ success: true, message: "Logged Out" })
   } catch (error) {
