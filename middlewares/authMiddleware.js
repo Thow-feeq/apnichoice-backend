@@ -28,7 +28,7 @@ export const isSellerAuthenticated = async (req, res, next) => {
 
 // ✅ For User: Token from Cookies (for browser sessions)
 export const isUserAuthenticated = async (req, res, next) => {
-  const token = req.headers.authorization?.split(" ")[1];
+  const token = req.cookies.token;
 
   if (!token) {
     return res.status(401).json({ success: false, message: 'Not authorized, no token' });
@@ -37,7 +37,6 @@ export const isUserAuthenticated = async (req, res, next) => {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
     const user = await User.findById(decoded.id).select('-password');
-
     if (!user) {
       return res.status(401).json({ success: false, message: 'User not found' });
     }
@@ -45,7 +44,7 @@ export const isUserAuthenticated = async (req, res, next) => {
     req.user = user;
     next();
   } catch (error) {
+    console.error('User Token verification error:', error);
     return res.status(401).json({ success: false, message: 'Invalid or expired token' });
   }
 };
-
