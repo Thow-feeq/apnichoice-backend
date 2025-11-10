@@ -10,11 +10,20 @@ import Product from "../models/Product.js";
  * - images (main images) -> req.files.images
  * - variantImages (all variant images flattened in order) -> req.files.variantImages
  */
+const uploadImage = async (file) => {
+  return await cloudinary.uploader.upload(file.path, {
+    resource_type: "image",
+    chunk_size: 6000000,          // allows >10MB images
+    transformation: [
+      { width: 1600, crop: "limit" } // auto resize large images
+    ]
+  });
+};
+
 export const addProduct = async (req, res) => {
   try {
     const productData = JSON.parse(req.body.productData || "{}");
 
-    // Files
     const mainImages = req.files?.images || [];
     const variantFiles = req.files?.variantImages || [];
 
@@ -23,26 +32,32 @@ export const addProduct = async (req, res) => {
       mainImages.map(async (file) => {
         const result = await cloudinary.uploader.upload(file.path, {
           resource_type: "image",
+          chunk_size: 6_000_000,   // ✅ lets you upload files bigger than 10MB
+          quality: "auto",
+          fetch_format: "auto"
         });
         return result.secure_url;
       })
     );
 
-    // 2. Upload variant images (all at once)
+    // 2. Upload variant images
     const uploadedVariantUrls = await Promise.all(
       variantFiles.map(async (file) => {
         const result = await cloudinary.uploader.upload(file.path, {
           resource_type: "image",
+          chunk_size: 6_000_000,
+          quality: "auto",
+          fetch_format: "auto"
         });
         return result.secure_url;
       })
     );
 
-    // 3. Reconstruct images into each variant (3 images each)
+    // 3. Re-map variant images (3 per variant)
     let pointer = 0;
 
     productData.variants = (productData.variants || []).map((variant) => {
-      const expectedCount = 3; // you always expect 3 variant images from frontend
+      const expectedCount = 3;
 
       const urls = uploadedVariantUrls.slice(pointer, pointer + expectedCount);
       pointer += expectedCount;
@@ -52,11 +67,11 @@ export const addProduct = async (req, res) => {
         colorCode: variant.colorCode || "",
         pattern: variant.pattern || "",
         sizes: Array.isArray(variant.sizes) ? variant.sizes : [],
-        images: urls, // array of URLs
+        images: urls,
       };
     });
 
-    // 4. Create product
+    // 4. Create new product
     const newProduct = await Product.create({
       ...productData,
       images: uploadedMain,
@@ -68,6 +83,7 @@ export const addProduct = async (req, res) => {
       message: "Product added successfully",
       data: newProduct,
     });
+
   } catch (error) {
     console.error("Add Product Error:", error);
     return res.status(500).json({

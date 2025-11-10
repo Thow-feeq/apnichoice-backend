@@ -1,6 +1,6 @@
 import express from 'express';
 import authUser from '../middlewares/authUser.js';
-import authSeller from '../middlewares/authSeller.js';
+import authSeller from '../middlewares/authAdmin.js';
 import {
   getAllOrders,
   getUserOrders,

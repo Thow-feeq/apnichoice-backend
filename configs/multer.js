@@ -13,7 +13,7 @@ if (!fs.existsSync(uploadDir)) {
   console.log("📁 Created uploads folder in configs/multer.js");
 }
 
-// Define proper storage location and filename
+// Storage location
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, uploadDir);
@@ -23,5 +23,11 @@ const storage = multer.diskStorage({
   },
 });
 
-// Export configured multer
-export const upload = multer({ storage });
+// ✅ FINAL MULTER EXPORT WITH LIMITS
+export const upload = multer({
+  storage,
+  limits: {
+    fileSize: 20 * 1024 * 1024,  // ✅ 20MB per file
+    files: 60                    // ✅ up to 60 images per request
+  }
+});
