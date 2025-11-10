@@ -43,11 +43,8 @@ app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
 app.use(express.json()); // placed after Stripe raw body
 app.use(cookieParser());
 app.use(cors({
-  origin: [
-    'http://localhost:5173',
-    'https://apnichoice-frontend.vercel.app' // Replace with your actual frontend URL
-  ],
-  credentials: true,
+  origin: ['https://apnichoice-frontend.vercel.app'],
+  credentials: true
 }));
 
 // Static files
