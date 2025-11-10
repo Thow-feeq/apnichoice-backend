@@ -2,10 +2,10 @@ import express from 'express';
 import { adminLogin, adminLogout, isAdminAuth } from '../controllers/adminController.js';
 import authAdmin from '../middlewares/authAdmin.js';
 
-const Router = express.Router();
+const adminRouter = express.Router();
 
-Router.post('/login', adminLogin);
-Router.get('/is-auth', authAdmin, isAdminAuth);
-Router.get('/logout', adminLogout);
+adminRouter.post('/login', adminLogin);
+adminRouter.get('/is-auth', authAdmin, isAdminAuth);
+adminRouter.get('/logout', adminLogout);
 
 export default adminRouter;

@@ -1,5 +1,3 @@
-// server.js
-
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -27,7 +25,6 @@ import newsletterRoutes from './routes/newsletterRoute.js';
 import { stripeWebhooks } from './controllers/orderController.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 
-
 import User from './models/User.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -36,40 +33,36 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 4000;
 
-// Stripe Webhook (must be before express.json())
+// Stripe Webhook (before express.json())
 app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
 
 // Middleware
-app.use(express.json()); // placed after Stripe raw body
+app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
   origin: ['https://apnichoice-frontend.vercel.app'],
   credentials: true
 }));
 
-// Static files
+// Uploads folder
 const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log('📁 Created uploads folder');
-}
+if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
-// File Upload
+// File upload
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
+  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
 });
 const upload = multer({ storage });
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-
-  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-  res.json({ success: true, url: fileUrl });
+  res.json({ success: true, url: `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}` });
 });
 
-
-// Routes
+// ------------------------
+// API Routes
+// ------------------------
 app.get('/', (req, res) => res.send('✅ API is working'));
 app.use('/api/user', userRouter);
 app.use('/api/admin', adminRouter);
@@ -84,8 +77,18 @@ app.use('/api/category', categoryRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/payment', paymentRoutes);
 
+// ------------------------
+// Serve React frontend (after all API routes)
+// ------------------------
+app.use(express.static(path.join(__dirname, 'dist'))); // <-- your React build folder
 
-// Server start
+app.get('*', (req, res) => {
+  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
+});
+
+// ------------------------
+// Start server
+// ------------------------
 if (process.env.NODE_ENV !== 'test') {
   const initialize = async () => {
     await connectDB();
@@ -95,18 +98,11 @@ if (process.env.NODE_ENV !== 'test') {
     const testEmail = 'test@example.com';
     const testUser = await User.findOne({ $or: [{ phone: testPhone }, { email: testEmail }] });
     if (!testUser) {
-      await User.create({
-        name: 'Test User',
-        phone: testPhone,
-        email: testEmail,
-        password: 'dummy123',
-      });
+      await User.create({ name: 'Test User', phone: testPhone, email: testEmail, password: 'dummy123' });
       console.log('✅ Test user created');
     }
 
-    app.listen(port, () => {
-      console.log(`🚀 Server running on port ${port}`);
-    });
+    app.listen(port, () => console.log(`🚀 Server running on port ${port}`));
   };
 
   initialize();
