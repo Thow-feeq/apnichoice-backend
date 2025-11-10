@@ -1,3 +1,4 @@
+// server.js
 import dotenv from 'dotenv';
 dotenv.config();
 
@@ -21,9 +22,9 @@ import orderRouter from './routes/orderRoute.js';
 import couponRoutes from './routes/couponRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
-import newsletterRoutes from './routes/newsletterRoute.js';
-import { stripeWebhooks } from './controllers/orderController.js';
+import newsletterRoutes from './routes/newsletterRoutes.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import { stripeWebhooks } from './controllers/orderController.js';
 
 import User from './models/User.js';
 
@@ -33,23 +34,41 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 4000;
 
+// ------------------------
 // Stripe Webhook (before express.json())
+// ------------------------
 app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
 
+// ------------------------
 // Middleware
+// ------------------------
 app.use(express.json());
 app.use(cookieParser());
+
+// ✅ CORS setup for cross-origin cookies
 app.use(cors({
-  origin: ['https://apnichoice-frontend.vercel.app'],
-  credentials: true
+  origin: 'https://apnichoice-frontend.vercel.app', // frontend URL
+  credentials: true, // allow cookies
+  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
+  allowedHeaders: ['Content-Type','Authorization','Accept','Origin'],
 }));
 
+// Debug CORS
+app.use((req, res, next) => {
+  console.log('Incoming request from origin:', req.headers.origin);
+  next();
+});
+
+// ------------------------
 // Uploads folder
+// ------------------------
 const uploadsDir = path.join(__dirname, 'uploads');
 if (!fs.existsSync(uploadsDir)) fs.mkdirSync(uploadsDir, { recursive: true });
 app.use('/uploads', express.static(uploadsDir));
 
+// ------------------------
 // File upload
+// ------------------------
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, uploadsDir),
   filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname))
@@ -80,8 +99,7 @@ app.use('/api/payment', paymentRoutes);
 // ------------------------
 // Serve React frontend (after all API routes)
 // ------------------------
-app.use(express.static(path.join(__dirname, 'dist'))); // <-- your React build folder
-
+app.use(express.static(path.join(__dirname, 'dist')));
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));
 });
@@ -94,6 +112,7 @@ if (process.env.NODE_ENV !== 'test') {
     await connectDB();
     await connectCloudinary();
 
+    // Create test user if not exists
     const testPhone = '6374540634';
     const testEmail = 'test@example.com';
     const testUser = await User.findOne({ $or: [{ phone: testPhone }, { email: testEmail }] });
