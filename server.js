@@ -1,34 +1,23 @@
 // server.js
-
+import express from 'express';
 import dotenv from 'dotenv';
 dotenv.config();
 
-import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import express from 'express';
 import cookieParser from 'cookie-parser';
 import cors from 'cors';
-import multer from 'multer';
 
 import connectDB from './configs/db.js';
 import connectCloudinary from './configs/cloudinary.js';
 
-import userRouter from './routes/userRoute.js';
 import adminRouter from './routes/adminRoute.js';
+import userRouter from './routes/userRoute.js';
 import productRouter from './routes/productRoute.js';
 import cartRouter from './routes/cartRoute.js';
-import addressRouter from './routes/addressRoute.js';
 import orderRouter from './routes/orderRoute.js';
-import couponRoutes from './routes/couponRoutes.js';
-import authRoutes from './routes/authRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
-import newsletterRoutes from './routes/newsletterRoute.js';
-import { stripeWebhooks } from './controllers/orderController.js';
 import paymentRoutes from './routes/paymentRoutes.js';
-
-
-import User from './models/User.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -36,80 +25,60 @@ const __dirname = path.dirname(__filename);
 const app = express();
 const port = process.env.PORT || 4000;
 
-// Stripe Webhook (must be before express.json())
-app.post('/stripe', express.raw({ type: 'application/json' }), stripeWebhooks);
-
-// Middleware
-app.use(express.json()); // placed after Stripe raw body
+// -------------------------
+// MIDDLEWARE
+// -------------------------
+app.use(express.json()); // must be BEFORE routes
 app.use(cookieParser());
 app.use(cors({
-  origin: ['https://apnichoice-frontend.vercel.app'],
-  credentials: true
+  origin: [
+    'http://localhost:5173',
+    'https://apnichoice-frontend.vercel.app'
+  ],
+  credentials: true,
 }));
 
-// Static files
-const uploadsDir = path.join(__dirname, 'uploads');
-if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir, { recursive: true });
-  console.log('📁 Created uploads folder');
-}
-app.use('/uploads', express.static(uploadsDir));
-
-// File Upload
-const storage = multer.diskStorage({
-  destination: (req, file, cb) => cb(null, uploadsDir),
-  filename: (req, file, cb) => cb(null, Date.now() + path.extname(file.originalname)),
-});
-const upload = multer({ storage });
-app.post('/api/upload', upload.single('file'), (req, res) => {
-  if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-
-  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
-  res.json({ success: true, url: fileUrl });
-});
-
-
-// Routes
-app.get('/', (req, res) => res.send('✅ API is working'));
-app.use('/api/user', userRouter);
+// -------------------------
+// ROUTES
+// -------------------------
 app.use('/api/admin', adminRouter);
+app.use('/api/user', userRouter);
 app.use('/api/product', productRouter);
 app.use('/api/cart', cartRouter);
-app.use('/api/address', addressRouter);
 app.use('/api/order', orderRouter);
-app.use('/api/coupon', couponRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api/seller/category', categoryRoutes);
 app.use('/api/category', categoryRoutes);
-app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/payment', paymentRoutes);
 
+app.get('/', (req, res) => res.send('✅ API is running'));
 
-// Server start
-if (process.env.NODE_ENV !== 'test') {
-  const initialize = async () => {
+// -------------------------
+// SERVE FRONTEND IN PRODUCTION
+// -------------------------
+if (process.env.NODE_ENV === 'production') {
+  const frontendPath = path.join(__dirname, 'frontend_dist'); // adjust if your build folder is different
+  app.use(express.static(frontendPath));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(frontendPath, 'index.html'));
+  });
+}
+
+// -------------------------
+// DATABASE & SERVER START
+// -------------------------
+const startServer = async () => {
+  try {
     await connectDB();
     await connectCloudinary();
-
-    const testPhone = '6374540634';
-    const testEmail = 'test@example.com';
-    const testUser = await User.findOne({ $or: [{ phone: testPhone }, { email: testEmail }] });
-    if (!testUser) {
-      await User.create({
-        name: 'Test User',
-        phone: testPhone,
-        email: testEmail,
-        password: 'dummy123',
-      });
-      console.log('✅ Test user created');
-    }
 
     app.listen(port, () => {
       console.log(`🚀 Server running on port ${port}`);
     });
-  };
+  } catch (err) {
+    console.error('❌ Server failed to start:', err);
+  }
+};
 
-  initialize();
-}
+startServer();
 
 export default app;
