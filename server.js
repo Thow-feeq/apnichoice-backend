@@ -66,8 +66,11 @@ const storage = multer.diskStorage({
 const upload = multer({ storage });
 app.post('/api/upload', upload.single('file'), (req, res) => {
   if (!req.file) return res.status(400).json({ success: false, message: 'No file uploaded' });
-  res.json({ success: true, url: `/uploads/${req.file.filename}` });
+
+  const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+  res.json({ success: true, url: fileUrl });
 });
+
 
 // Routes
 app.get('/', (req, res) => res.send('✅ API is working'));

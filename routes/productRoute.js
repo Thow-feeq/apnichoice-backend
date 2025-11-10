@@ -1,33 +1,32 @@
-import express from 'express';
-import { upload } from '../configs/multer.js';
-import authSeller from '../middlewares/authSeller.js';
+// server/routes/productRoute.js
+import express from "express";
+import { upload } from "../configs/multer.js"; // your multer config that defines upload.fields()
+import authSeller from "../middlewares/authSeller.js";
 import {
   addProduct,
-  changeStock,
-  productById,
   productList,
+  productById,
   updateProduct,
   deleteProduct,
-  getProductCount
-} from '../controllers/productController.js';
+  changeStock,
+} from "../controllers/productController.js";
 
-const productRouter = express.Router();
+const router = express.Router();
 
-// Fix 1: multer's upload.array takes the field name as a string, NOT an array.
-// If your form field name is 'images', use:
-// upload.array('images')
-// If you expect multiple fields, use .fields() instead.
+router.post(
+  "/add",
+  upload.fields([
+    { name: "images", maxCount: 10 },
+    { name: "variantImages", maxCount: 50 },
+  ]),
+  authSeller,
+  addProduct
+);
 
-productRouter.post('/add', upload.array('images'), authSeller, addProduct);
+router.get("/list", productList);
+router.get("/:id", productById);
+router.put("/:id", authSeller, updateProduct);
+router.delete("/:id", authSeller, deleteProduct);
+router.post("/stock", authSeller, changeStock);
 
-productRouter.get('/list', productList);
-productRouter.get('/count', getProductCount);
-
-// Fix 2: Place dynamic routes AFTER all static routes like /list, /count to avoid conflicts
-productRouter.get('/:id', productById);
-
-productRouter.post('/stock', authSeller, changeStock);
-productRouter.put('/:id', updateProduct);
-productRouter.delete('/:id', deleteProduct);
-
-export default productRouter;
+export default router;
