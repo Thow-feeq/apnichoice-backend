@@ -1,6 +1,7 @@
 import express from "express";
 import { addAddress, getAddress } from "../controllers/addressController.js";
-import authUser from "../middlewares/authMiddleware.js";
+import { authUser } from "../middlewares/authMiddleware.js";
+
 
 const router = express.Router();
 
