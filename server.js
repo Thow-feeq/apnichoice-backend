@@ -22,7 +22,7 @@ import orderRouter from './routes/orderRoute.js';
 import couponRoutes from './routes/couponRoutes.js';
 import authRoutes from './routes/authRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
-import newsletterRoutes from './routes/newsletterRoutes.js';
+import newsletterRoutes from './routes/newsletterRoute.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import { stripeWebhooks } from './controllers/orderController.js';
 
@@ -46,18 +46,44 @@ app.use(express.json());
 app.use(cookieParser());
 
 // ✅ CORS setup for cross-origin cookies
+const allowedOrigins = [
+  'http://localhost:5173',               // local frontend
+  'http://localhost:3000',               // alt local
+  'https://apnichoice-frontend.vercel.app' // production frontend
+];
+
 app.use(cors({
-  origin: 'https://apnichoice-frontend.vercel.app', // frontend URL
-  credentials: true, // allow cookies
-  methods: ['GET','POST','PUT','DELETE','OPTIONS'],
-  allowedHeaders: ['Content-Type','Authorization','Accept','Origin'],
+  origin: function (origin, callback) {
+    const allowedOrigins = [
+      "http://localhost:5173",
+      "http://localhost:3000",
+      "https://apnichoice-frontend.vercel.app"
+    ];
+
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      callback(new Error("Not allowed by CORS"));
+    }
+  },
+  credentials: true,
+
+  // ✅ IMPORTANT: PATCH ADD PANNU
+  methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
+
+  allowedHeaders: [
+    "Content-Type",
+    "Authorization",
+    "Accept",
+    "Origin",
+  ],
 }));
 
 // Debug CORS
-app.use((req, res, next) => {
-  console.log('Incoming request from origin:', req.headers.origin);
-  next();
-});
+// app.use((req, res, next) => {
+//   console.log('Incoming request from origin:', req.headers.origin);
+//   next();
+// });
 
 // ------------------------
 // Uploads folder
@@ -99,10 +125,17 @@ app.use('/api/payment', paymentRoutes);
 // ------------------------
 // Serve React frontend (after all API routes)
 // ------------------------
-app.use(express.static(path.join(__dirname, 'dist')));
-app.get('*', (req, res) => {
-  res.sendFile(path.join(__dirname, 'dist', 'index.html'));
-});
+// ------------------------
+// Serve React frontend (ONLY in production)
+// ------------------------
+if (process.env.NODE_ENV === "production") {
+  app.use(express.static(path.join(__dirname, "dist")));
+
+  app.get("*", (req, res) => {
+    res.sendFile(path.join(__dirname, "dist", "index.html"));
+  });
+}
+
 
 // ------------------------
 // Start server

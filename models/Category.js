@@ -1,25 +1,42 @@
-import mongoose from 'mongoose';
+import mongoose from "mongoose";
 
-const categorySchema = new mongoose.Schema({
-  text: {
-    type: String,
-    required: true,
-    unique: true,
-    trim: true,
-  },
-  image: {
-    type: String,
-    default: '', // image URL
-  },
-  bgColor: {
-    type: String,
-    default: '#f0f0f0', // fallback color
-  },
-  path: {
-    type: String,
-    default: '', // optional: URL-friendly path
-  }
-});
+const categorySchema = new mongoose.Schema(
+  {
+    name: {
+      type: String,
+      required: true,
+      trim: true,
+      unique: true
+    },
 
-const Category = mongoose.model('Category', categorySchema);
-export default Category;
+    slug: {
+      type: String,
+      required: true,
+      unique: true
+    },
+
+    image: {
+      type: String,
+      default: ""
+    },
+
+    bgColor: {
+      type: String,
+      default: "#f0f0f0"
+    },
+
+    parent: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: "Category",
+      default: null
+    },
+
+    level: {
+      type: Number,
+      default: 0
+    }
+  },
+  { timestamps: true }
+);
+
+export default mongoose.model("Category", categorySchema);

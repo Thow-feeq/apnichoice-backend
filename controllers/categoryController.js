@@ -3,24 +3,58 @@ import Category from '../models/Category.js';
 // POST /api/seller/category/add
 export const addCategory = async (req, res) => {
   try {
-    const { text, path, image, bgColor } = req.body;
+    const { name, slug, image, bgColor, parent } = req.body;
 
-    if (!text || !path || !image || !bgColor) {
-      return res.status(400).json({ success: false, message: 'All fields are required' });
+    if (!name || !slug) {
+      return res.status(400).json({
+        success: false,
+        message: "Name & slug required"
+      });
     }
 
-    const exists = await Category.findOne({ $or: [{ text }, { path }] });
+    // ✅ Duplicate check
+    const exists = await Category.findOne({ slug });
     if (exists) {
-      return res.status(400).json({ success: false, message: 'Category already exists' });
+      return res.status(400).json({
+        success: false,
+        message: "Category already exists"
+      });
     }
 
-    const newCategory = new Category({ text, path, image, bgColor });
-    await newCategory.save();
+    // ✅ Level calculation
+    let level = 0;
+    if (parent) {
+      const parentCat = await Category.findById(parent);
+      if (!parentCat) {
+        return res.status(400).json({
+          success: false,
+          message: "Invalid parent category"
+        });
+      }
+      level = parentCat.level + 1;
+    }
 
-    res.status(201).json({ success: true, message: 'Category added successfully' });
-  } catch (error) {
-    console.error('Add category error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
+    const category = new Category({
+      name,
+      slug,
+      image,
+      bgColor,
+      parent: parent || null,
+      level
+    });
+
+    await category.save();
+
+    return res.json({
+      success: true,
+      message: "Category added successfully"
+    });
+  } catch (err) {
+    console.error("Add Category Error:", err);
+    return res.status(500).json({
+      success: false,
+      message: "Server Error"
+    });
   }
 };
 
@@ -61,37 +95,37 @@ export const listCategories = async (req, res) => {
   }
 };
 
-// GET /api/seller/category/all
-export const getCategories = async (req, res) => {
-  try {
-    const categories = await Category.find().sort({ createdAt: -1 }); // latest first
-    res.json({ success: true, categories });
-  } catch (error) {
-    console.error('Fetch categories error:', error);
-    res.status(500).json({ success: false, message: 'Server error' });
-  }
-};
-
+// PUT /api/seller/category/edit/:id
 // PUT /api/seller/category/edit/:id
 export const updateCategory = async (req, res) => {
   try {
     const { id } = req.params;
-    const { text, path, bgColor, image } = req.body;
+    const { name, slug, bgColor, image, parent } = req.body;
+
+    let level = 0;
+    if (parent) {
+      const parentCat = await Category.findById(parent);
+      if (!parentCat) {
+        return res.status(400).json({ success: false, message: "Invalid parent category" });
+      }
+      level = parentCat.level + 1;
+    }
 
     const updated = await Category.findByIdAndUpdate(
       id,
-      { text, path, bgColor, image },
+      { name, slug, bgColor, image, parent: parent || null, level },
       { new: true }
     );
 
     if (!updated) {
-      return res.status(404).json({ success: false, message: 'Category not found' });
+      return res.status(404).json({ success: false, message: "Category not found" });
     }
 
-    res.json({ success: true, message: 'Category updated', category: updated });
+    res.json({ success: true, message: "Category updated", category: updated });
+
   } catch (err) {
-    console.error('Update error:', err);
-    res.status(500).json({ success: false, message: 'Server error' });
+    console.error("Update error:", err);
+    res.status(500).json({ success: false, message: "Server error" });
   }
 };
 
@@ -109,5 +143,32 @@ export const deleteCategory = async (req, res) => {
   } catch (error) {
     console.error('Delete error:', error);
     res.status(500).json({ success: false, message: 'Server error' });
+  }
+};
+
+// server/controllers/categoryController.js
+
+export const getCategoryTree = async (req, res) => {
+  try {
+    const categories = await Category.find().lean();
+
+    const map = {};
+    const roots = [];
+
+    categories.forEach(cat => {
+      map[cat._id] = { ...cat, children: [] };
+    });
+
+    categories.forEach(cat => {
+      if (cat.parent) {
+        map[cat.parent]?.children.push(map[cat._id]);
+      } else {
+        roots.push(map[cat._id]);
+      }
+    });
+
+    res.json({ success: true, categories: roots });
+  } catch (err) {
+    res.status(500).json({ success: false, message: err.message });
   }
 };
