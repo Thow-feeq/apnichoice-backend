@@ -6,141 +6,143 @@ import Coupon from "../models/Coupon.js";
 import sendEmail from '../utils/emailServices.js';
 
 export const placeOrderCOD = async (req, res) => {
-  try {
-    const { userId, items, address, couponCode } = req.body;
+    try {
+        const { userId, items, address, couponCode } = req.body;
 
-    if (!address || items.length === 0) {
-      return res.json({ success: false, message: "Invalid data" });
+        if (!address || items.length === 0) {
+            return res.json({ success: false, message: "Invalid data" });
+        }
+
+        let amount = 0; // Actual Price without discount
+        let totalAmount = 0; // Final Price with discount + tax
+        const productDetails = [];
+
+        for (const item of items) {
+            const product = await Product.findById(item.product);
+            amount += product.offerPrice * item.quantity;
+            productDetails.push({
+                name: product.name,
+                price: product.offerPrice,
+                quantity: item.quantity,
+                image: product.image,
+                status: 'Pending'
+            });
+        }
+
+        let discountAmount = 0;
+        let appliedCoupon = null;
+
+        if (couponCode) {
+            const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+            const now = new Date();
+            if (!coupon) return res.json({ success: false, message: "Invalid coupon code" });
+            if (now > coupon.expiry) return res.json({ success: false, message: "Coupon has expired" });
+            if (amount < coupon.minCartAmount) return res.json({ success: false, message: `Cart must be at least ₹${coupon.minCartAmount}` });
+
+            discountAmount = coupon.discountType === "percentage"
+                ? Math.floor((amount * coupon.discountValue) / 100)
+                : coupon.discountValue;
+
+            appliedCoupon = coupon.code;
+        }
+
+        const afterDiscount = amount - discountAmount;
+        totalAmount = afterDiscount + Math.floor(afterDiscount * 0.02); // Tax 2%
+
+        const newOrder = await Order.create({
+            userId,
+            items,
+            amount, // Original Price
+            totalAmount, // Final Amount to be paid
+            address,
+            paymentType: "COD",
+            isPaid: false,
+            couponCode: appliedCoupon || null,
+            discountAmount,
+        });
+
+        const user = await User.findById(userId);
+
+        if (user?.email) {
+            sendEmail(user.email, 'Order Confirmed', newOrder._id, productDetails)
+                .catch(err => console.log("Email fail:", err.message));
+        }
+
+        sendEmail('thowfiqahamed9@gmail.com', 'Order Confirmed', newOrder._id, productDetails)
+            .catch(err => console.log("Admin email fail:", err.message));
+        res.json({ success: true, message: "Order Placed Successfully (COD)" });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
     }
-
-    let amount = 0; // Actual Price without discount
-    let totalAmount = 0; // Final Price with discount + tax
-    const productDetails = [];
-
-    for (const item of items) {
-      const product = await Product.findById(item.product);
-      amount += product.offerPrice * item.quantity;
-      productDetails.push({
-        name: product.name,
-        price: product.offerPrice,
-        quantity: item.quantity,
-        image: product.image,
-        status: 'Pending'
-      });
-    }
-
-    let discountAmount = 0;
-    let appliedCoupon = null;
-
-    if (couponCode) {
-      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
-      const now = new Date();
-      if (!coupon) return res.json({ success: false, message: "Invalid coupon code" });
-      if (now > coupon.expiry) return res.json({ success: false, message: "Coupon has expired" });
-      if (amount < coupon.minCartAmount) return res.json({ success: false, message: `Cart must be at least ₹${coupon.minCartAmount}` });
-
-      discountAmount = coupon.discountType === "percentage"
-        ? Math.floor((amount * coupon.discountValue) / 100)
-        : coupon.discountValue;
-
-      appliedCoupon = coupon.code;
-    }
-
-    const afterDiscount = amount - discountAmount;
-    totalAmount = afterDiscount + Math.floor(afterDiscount * 0.02); // Tax 2%
-
-    const newOrder = await Order.create({
-      userId,
-      items,
-      amount, // Original Price
-      totalAmount, // Final Amount to be paid
-      address,
-      paymentType: "COD",
-      isPaid: false,
-      couponCode: appliedCoupon || null,
-      discountAmount,
-    });
-
-    const user = await User.findById(userId);
-
-    if (user?.email) {
-      await sendEmail(user.email, 'Order Confirmed', newOrder._id, productDetails);
-    }
-    await sendEmail('thowfiqahamed9@gmail.com', 'Order Confirmed', newOrder._id, productDetails);
-
-    res.json({ success: true, message: "Order Placed Successfully (COD)" });
-  } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
 };
 
 
 export const placeOrderOnline = async (req, res) => {
-  try {
-    const { userId, items, address, couponCode } = req.body;
+    try {
+        const { userId, items, address, couponCode } = req.body;
 
-    if (!address || items.length === 0) {
-      return res.json({ success: false, message: "Invalid data" });
+        if (!address || items.length === 0) {
+            return res.json({ success: false, message: "Invalid data" });
+        }
+
+        let amount = 0;
+        const productDetails = [];
+
+        for (const item of items) {
+            const product = await Product.findById(item.product);
+            amount += product.offerPrice * item.quantity;
+            productDetails.push({
+                name: product.name,
+                price: product.offerPrice,
+                quantity: item.quantity,
+                image: product.image,
+                status: 'Pending'
+            });
+        }
+
+        let discountAmount = 0;
+        let appliedCoupon = null;
+
+        if (couponCode) {
+            const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
+            const now = new Date();
+            if (!coupon) return res.json({ success: false, message: "Invalid coupon code" });
+            if (now > coupon.expiry) return res.json({ success: false, message: "Coupon has expired" });
+            if (amount < coupon.minCartAmount) return res.json({ success: false, message: `Cart must be at least ₹${coupon.minCartAmount}` });
+
+            discountAmount = coupon.discountType === "percentage"
+                ? Math.floor((amount * coupon.discountValue) / 100)
+                : coupon.discountValue;
+
+            appliedCoupon = coupon.code;
+        }
+
+        const afterDiscount = amount - discountAmount;
+        const totalAmount = afterDiscount + Math.floor(afterDiscount * 0.02);
+
+        const newOrder = await Order.create({
+            userId,
+            items,
+            amount,
+            totalAmount,
+            address,
+            paymentType: "Online",
+            isPaid: true,
+            couponCode: appliedCoupon || null,
+            discountAmount,
+        });
+
+        const user = await User.findById(userId);
+
+        if (user?.email) {
+            await sendEmail(user.email, 'Order Confirmed', newOrder._id, productDetails);
+        }
+        await sendEmail('thowfiqahamed9@gmail.com', 'Order Confirmed', newOrder._id, productDetails);
+
+        res.json({ success: true, message: "Order Placed Successfully (Online)" });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
     }
-
-    let amount = 0;
-    const productDetails = [];
-
-    for (const item of items) {
-      const product = await Product.findById(item.product);
-      amount += product.offerPrice * item.quantity;
-      productDetails.push({
-        name: product.name,
-        price: product.offerPrice,
-        quantity: item.quantity,
-        image: product.image,
-        status: 'Pending'
-      });
-    }
-
-    let discountAmount = 0;
-    let appliedCoupon = null;
-
-    if (couponCode) {
-      const coupon = await Coupon.findOne({ code: couponCode.toUpperCase() });
-      const now = new Date();
-      if (!coupon) return res.json({ success: false, message: "Invalid coupon code" });
-      if (now > coupon.expiry) return res.json({ success: false, message: "Coupon has expired" });
-      if (amount < coupon.minCartAmount) return res.json({ success: false, message: `Cart must be at least ₹${coupon.minCartAmount}` });
-
-      discountAmount = coupon.discountType === "percentage"
-        ? Math.floor((amount * coupon.discountValue) / 100)
-        : coupon.discountValue;
-
-      appliedCoupon = coupon.code;
-    }
-
-    const afterDiscount = amount - discountAmount;
-    const totalAmount = afterDiscount + Math.floor(afterDiscount * 0.02);
-
-    const newOrder = await Order.create({
-      userId,
-      items,
-      amount,
-      totalAmount,
-      address,
-      paymentType: "Online",
-      isPaid: true,
-      couponCode: appliedCoupon || null,
-      discountAmount,
-    });
-
-    const user = await User.findById(userId);
-
-    if (user?.email) {
-      await sendEmail(user.email, 'Order Confirmed', newOrder._id, productDetails);
-    }
-    await sendEmail('thowfiqahamed9@gmail.com', 'Order Confirmed', newOrder._id, productDetails);
-
-    res.json({ success: true, message: "Order Placed Successfully (Online)" });
-  } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
 };
 
 
