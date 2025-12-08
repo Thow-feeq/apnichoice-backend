@@ -47,37 +47,32 @@ app.use(cookieParser());
 
 // ✅ CORS setup for cross-origin cookies
 const allowedOrigins = [
-  'http://localhost:5173',               // local frontend
-  'http://localhost:3000',               // alt local
-  'https://apnichoice-frontend.vercel.app' // production frontend
+  "http://localhost:5173",
+  "http://localhost:3000",
+  "https://apnichoice-frontend.vercel.app",
+  /\.vercel\.app$/  // ✅ allow ALL vercel preview URLs
 ];
 
 app.use(cors({
   origin: function (origin, callback) {
-    const allowedOrigins = [
-      "http://localhost:5173",
-      "http://localhost:3000",
-      "https://apnichoice-frontend.vercel.app"
-    ];
+    if (!origin) return callback(null, true);
 
-    if (!origin || allowedOrigins.includes(origin)) {
+    if (
+      allowedOrigins.some((o) =>
+        typeof o === "string" ? o === origin : o.test(origin)
+      )
+    ) {
       callback(null, true);
     } else {
+      console.log("❌ Blocked by CORS:", origin);
       callback(new Error("Not allowed by CORS"));
     }
   },
   credentials: true,
-
-  // ✅ IMPORTANT: PATCH ADD PANNU
   methods: ["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"],
-
-  allowedHeaders: [
-    "Content-Type",
-    "Authorization",
-    "Accept",
-    "Origin",
-  ],
+  allowedHeaders: ["Content-Type", "Authorization", "Accept", "Origin"],
 }));
+
 
 // Debug CORS
 // app.use((req, res, next) => {
