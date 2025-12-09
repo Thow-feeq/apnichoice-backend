@@ -277,11 +277,7 @@ export const stripeWebhooks = async (request, response) => {
 // Get Orders by User ID : /api/order/user
 export const getUserOrders = async (req, res) => {
   try {
-    const { userId } = req.body;
-
-    if (!userId) {
-      return res.json({ success: false, message: "UserId missing" }); // ✅
-    }
+    const userId = req.user._id;   // ✅ FROM JWT, NOT BODY
 
     const orders = await Order.find({
       userId,
