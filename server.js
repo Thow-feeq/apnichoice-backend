@@ -24,6 +24,7 @@ import authRoutes from './routes/authRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import newsletterRoutes from './routes/newsletterRoute.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+
 import { stripeWebhooks } from './controllers/orderController.js';
 
 import User from './models/User.js';
@@ -116,6 +117,7 @@ app.use('/api/seller/category', categoryRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/payment', paymentRoutes);
+
 
 // ------------------------
 // Serve React frontend (after all API routes)
