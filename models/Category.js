@@ -5,14 +5,13 @@ const categorySchema = new mongoose.Schema(
     name: {
       type: String,
       required: true,
-      trim: true,
-      unique: true
+      trim: true
     },
 
     slug: {
       type: String,
       required: true,
-      unique: true
+      trim: true
     },
 
     image: {
@@ -34,9 +33,17 @@ const categorySchema = new mongoose.Schema(
     level: {
       type: Number,
       default: 0
+    },
+
+    path: {
+      type: String,
+      default: ""
     }
   },
   { timestamps: true }
 );
+
+/* 🔥 Compound Unique Index */
+categorySchema.index({ slug: 1, parent: 1 }, { unique: true });
 
 export default mongoose.model("Category", categorySchema);
