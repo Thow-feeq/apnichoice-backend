@@ -90,6 +90,23 @@ export const getSingleCategory = async (req, res) => {
     });
   }
 };
+
+export const getCategoryCount = async (req, res) => {
+  try {
+    const count = await Category.countDocuments();
+
+    res.json({
+      success: true,
+      count
+    });
+  } catch (err) {
+    console.error("CATEGORY COUNT ERROR:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
+  }
+};
 /* ================= GET TREE ================= */
 export const getCategoryTree = async (req, res) => {
   try {
