@@ -18,15 +18,60 @@ export const placeOrderCOD = async (req, res) => {
         const productDetails = [];
 
         for (const item of items) {
+
             const product = await Product.findById(item.product);
-            amount += product.offerPrice * item.quantity;
+            if (!product) continue;
+
+            const price = product.offerPrice || product.price;
+
+            amount += price * item.quantity;
+
             productDetails.push({
                 name: product.name,
-                price: product.offerPrice,
+                price,
                 quantity: item.quantity,
-                image: product.image,
-                status: 'Pending'
+                image: product.images?.[0] || ""
             });
+
+            /* SIMPLE PRODUCT */
+            if (!product.variants || product.variants.length === 0) {
+
+                if (product.stock < item.quantity) {
+                    return res.json({
+                        success: false,
+                        message: `${product.name} out of stock`
+                    })
+                }
+
+                product.stock -= item.quantity;
+            }
+
+            /* VARIANT PRODUCT */
+            else {
+
+                const variant = product.variants.find(
+                    v => v.colorName === item.color
+                );
+
+                if (!variant) continue;
+
+                const sizeObj = variant.sizes.find(
+                    s => s.size === item.size
+                );
+
+                if (!sizeObj) continue;
+
+                if (sizeObj.quantity < item.quantity) {
+                    return res.json({
+                        success: false,
+                        message: `${product.name} size ${item.size} out of stock`
+                    })
+                }
+
+                sizeObj.quantity -= item.quantity;
+            }
+
+            await product.save();
         }
 
         let discountAmount = 0;
@@ -89,15 +134,52 @@ export const placeOrderOnline = async (req, res) => {
         const productDetails = [];
 
         for (const item of items) {
+
             const product = await Product.findById(item.product);
-            amount += product.offerPrice * item.quantity;
-            productDetails.push({
-                name: product.name,
-                price: product.offerPrice,
-                quantity: item.quantity,
-                image: product.image,
-                status: 'Pending'
-            });
+            if (!product) continue;
+
+            const price = product.offerPrice || product.price;
+            amount += price * item.quantity;
+
+            /* SIMPLE PRODUCT */
+            if (!product.variants || product.variants.length === 0) {
+
+                if (product.stock < item.quantity) {
+                    return res.json({
+                        success: false,
+                        message: `${product.name} out of stock`
+                    })
+                }
+
+                product.stock -= item.quantity;
+            }
+
+            /* VARIANT PRODUCT */
+            else {
+
+                const variant = product.variants.find(
+                    v => v.colorName === item.color
+                );
+
+                if (!variant) continue;
+
+                const sizeObj = variant.sizes.find(
+                    s => s.size === item.size
+                );
+
+                if (!sizeObj) continue;
+
+                if (sizeObj.quantity < item.quantity) {
+                    return res.json({
+                        success: false,
+                        message: `${product.name} size ${item.size} out of stock`
+                    })
+                }
+
+                sizeObj.quantity -= item.quantity;
+            }
+
+            await product.save();
         }
 
         let discountAmount = 0;
@@ -276,20 +358,20 @@ export const stripeWebhooks = async (request, response) => {
 
 // Get Orders by User ID : /api/order/user
 export const getUserOrders = async (req, res) => {
-  try {
-    const userId = req.user._id;   // ✅ FROM JWT, NOT BODY
+    try {
+        const userId = req.user._id;   // ✅ FROM JWT, NOT BODY
 
-    const orders = await Order.find({
-      userId,
-      $or: [{ paymentType: "COD" }, { isPaid: true }]
-    })
-      .populate("items.product address")
-      .sort({ createdAt: -1 });
+        const orders = await Order.find({
+            userId,
+            $or: [{ paymentType: "COD" }, { isPaid: true }]
+        })
+            .populate("items.product address")
+            .sort({ createdAt: -1 });
 
-    res.json({ success: true, orders });
-  } catch (error) {
-    res.json({ success: false, message: error.message });
-  }
+        res.json({ success: true, orders });
+    } catch (error) {
+        res.json({ success: false, message: error.message });
+    }
 };
 
 
@@ -315,46 +397,65 @@ export const getOrderCount = async (req, res) => {
 };
 
 export const updateOrderStatus = async (req, res) => {
-    try {
-        const { orderId, status } = req.body;
+  try {
 
-        if (!['Pending', 'Dispatched', 'Delivered'].includes(status)) {
-            return res.status(400).json({ success: false, message: 'Invalid status' });
-        }
+    const { orderId, status, courier, trackingId } = req.body;
 
-        const order = await Order.findById(orderId)
-            .populate('userId')
-            .populate('items.product'); // make sure products are populated
-
-        if (!order) {
-            return res.status(404).json({ success: false, message: 'Order not found' });
-        }
-
-        order.status = status;
-        await order.save();
-
-        // Prepare product list for email
-        const productList = order.items.map(item => ({
-            name: item.product?.name,
-            price: item.product?.price,
-            quantity: item.product?.quantity,
-            discountAmount: item.product?.discountAmount,
-            image: item.product?.image,
-            status,
-        }));
-
-        // Send emails
-        if (order.userId?.email) {
-            await sendEmail(order.userId.email, status, order._id, productList);
-        }
-        await sendEmail('thowfiqahamed9@gmail.com', status, order._id, productList);
-
-        res.json({ success: true, message: 'Order status updated and emails sent', order });
-
-    } catch (error) {
-        console.error('Order status update error:', error);
-        res.status(500).json({ success: false, message: error.message });
+    if (
+      ![
+        "Pending",
+        "Accepted",
+        "Rejected",
+        "Dispatched",
+        "Delivered"
+      ].includes(status)
+    ) {
+      return res.status(400).json({
+        success: false,
+        message: "Invalid status"
+      });
     }
+
+    const order = await Order.findById(orderId)
+      .populate("userId")
+      .populate("items.product");
+
+    if (!order) {
+      return res.status(404).json({
+        success: false,
+        message: "Order not found"
+      });
+    }
+
+    /* UPDATE STATUS */
+    order.status = status;
+
+    /* SAVE COURIER DETAILS */
+
+    if (courier) {
+      order.courier = courier;
+    }
+
+    if (trackingId) {
+      order.trackingId = trackingId;
+    }
+
+    await order.save();
+
+    res.json({
+      success: true,
+      message: "Order status updated",
+      order
+    });
+
+  } catch (error) {
+
+    res.status(500).json({
+      success: false,
+      message: error.message
+    });
+
+  }
 };
 
 

@@ -24,6 +24,8 @@ import authRoutes from './routes/authRoutes.js';
 import categoryRoutes from './routes/categoryRoutes.js';
 import newsletterRoutes from './routes/newsletterRoute.js';
 import paymentRoutes from './routes/paymentRoutes.js';
+import bannerRoutes from "./routes/bannerRoutes.js";
+import reviewRoutes from "./routes/reviewRoutes.js";
 
 import { stripeWebhooks } from './controllers/orderController.js';
 
@@ -117,8 +119,9 @@ app.use('/api/seller/category', categoryRoutes);
 app.use('/api/category', categoryRoutes);
 app.use('/api/newsletter', newsletterRoutes);
 app.use('/api/payment', paymentRoutes);
-
-
+app.use("/api", bannerRoutes);
+app.use("/uploads", express.static("uploads"));
+app.use("/api", reviewRoutes);
 // ------------------------
 // Serve React frontend (after all API routes)
 // ------------------------

@@ -4,10 +4,12 @@ import mongoose from "mongoose";
 const sizeSchema = new mongoose.Schema({
   size: {
     type: String,
-    enum: ["S", "M", "L", "XL", "XXL", "XXXL"],
-    required: true,
+    required: true
   },
-  quantity: { type: Number, default: 0 },
+  quantity: {
+    type: Number,
+    default: 0
+  }
 });
 
 /* ✅ COLOR / VARIANT SCHEMA */
@@ -53,6 +55,11 @@ const productSchema = new mongoose.Schema(
 
     /* ✅ VARIANTS */
     variants: [colorSchema],
+
+    stock: {
+      type: Number,
+      default: 0
+    },
 
     /* ✅ STOCK FLAG */
     inStock: { type: Boolean, default: true },

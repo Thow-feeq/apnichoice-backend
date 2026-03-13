@@ -53,7 +53,7 @@ const sendEmail = async (
     <div style="font-family: Arial, sans-serif; max-width: 640px; margin: auto; border: 1px solid #ccc; border-radius: 8px; overflow: hidden;">
       <div style="background-color: #f8f9fa; padding: 20px; text-align: center;">
        <div style="font-weight: bold; font-size: 24px; color: #333; text-align: center; margin-bottom: 10px;">
-  Apni Choice
+  V
 </div>
         <h2 style="color: #333; margin: 10px 0;">Order #${orderId} Update</h2>
         <p style="font-size: 16px;">Your order status is now: <strong style="color: #007bff;">${status}</strong></p>
@@ -77,7 +77,7 @@ const sendEmail = async (
   `;
 
   const mailOptions = {
-    from: `"Apni Choice" <${process.env.EMAIL_USER}>`,
+    from: `"Vasthra Dhee Fashion" <${process.env.EMAIL_USER}>`,
     to,
     subject: `Order #${orderId} Status: ${status}`,
     html: htmlContent,

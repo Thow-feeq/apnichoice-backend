@@ -5,6 +5,7 @@ import {
   deleteCategory,
   updateCategory,
   getCategoryCount,
+  listCategories,
   getSingleCategory   // 👈 add this
 } from "../controllers/categoryController.js";
 
@@ -16,6 +17,7 @@ router.get("/tree", getCategoryTree);
 router.get("/count", getCategoryCount);
 
 // 👇 VERY IMPORTANT: place BEFORE put/delete conflicts
+router.get("/list", listCategories);
 router.get("/:id", getSingleCategory);
 
 router.delete("/delete/:id", deleteCategory);
