@@ -73,6 +73,6 @@ productSchema.index({ name: 1 });
 
 /* ✅ SAFE EXPORT */
 const Product =
-  mongoose.models.product || mongoose.model("product", productSchema);
+  mongoose.models.Product || mongoose.model("Product", productSchema);
 
 export default Product;
