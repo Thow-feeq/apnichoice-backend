@@ -26,7 +26,7 @@ import newsletterRoutes from './routes/newsletterRoute.js';
 import paymentRoutes from './routes/paymentRoutes.js';
 import bannerRoutes from "./routes/bannerRoutes.js";
 import reviewRoutes from "./routes/reviewRoutes.js";
-
+import stockReportRoute from "./routes/stockReportRoute.js";
 import { stripeWebhooks } from './controllers/orderController.js';
 
 import User from './models/User.js';
@@ -122,6 +122,7 @@ app.use('/api/payment', paymentRoutes);
 app.use("/api", bannerRoutes);
 app.use("/uploads", express.static("uploads"));
 app.use("/api", reviewRoutes);
+app.use("/api/admin", stockReportRoute);
 // ------------------------
 // Serve React frontend (after all API routes)
 // ------------------------
