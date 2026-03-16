@@ -1,21 +1,27 @@
-import multer from "multer";
 import { v2 as cloudinary } from "cloudinary";
-import { CloudinaryStorage } from "multer-storage-cloudinary";
 
-// Cloudinary storage
-const storage = new CloudinaryStorage({
-  cloudinary,
-  params: async (req, file) => ({
-    folder: "apnichoice",
-    allowed_formats: ["jpg", "png", "jpeg", "webp"],
-    transformation: [{ width: 1920, crop: "limit" }]
-  })
-});
+export const uploadImage = async (req, res) => {
+  try {
+    const file = req.file;
 
-export const upload = multer({
-  storage,
-  limits: {
-    fileSize: 20 * 1024 * 1024,
-    files: 60
+    const result = await new Promise((resolve, reject) => {
+      const stream = cloudinary.uploader.upload_stream(
+        { folder: "apnichoice" },
+        (error, result) => {
+          if (error) reject(error);
+          else resolve(result);
+        }
+      );
+
+      stream.end(file.buffer);
+    });
+
+    res.json({
+      success: true,
+      url: result.secure_url
+    });
+
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
   }
-});
+};
