@@ -10,12 +10,33 @@ import Category from "../models/Category.js"; // ✅ IMPORTANT
  */
 export const addProduct = async (req, res) => {
   try {
+    // ✅ 👉 PLACE IT HERE (TOP)
+    const uploadFromBuffer = (fileBuffer) => {
+      return new Promise((resolve, reject) => {
+        const stream = cloudinary.uploader.upload_stream(
+          {
+            resource_type: "image",
+            quality: "auto",
+            fetch_format: "auto",
+          },
+          (error, result) => {
+            if (error) reject(error);
+            else resolve(result);
+          }
+        );
+        stream.end(fileBuffer);
+      });
+    };
     const productData = JSON.parse(req.body.productData || "{}");
+
+    console.log("REQ BODY:", req.body);
+    console.log("REQ FILES:", req.files);
 
     const mainImages = req.files?.images || [];
     const variantFiles = req.files?.variantImages || [];
 
-    // ✅ 1. STRICT CATEGORY VALIDATION (CHILD ONLY)
+    /* ---------------- CATEGORY VALIDATION ---------------- */
+
     if (!productData.category) {
       return res.status(400).json({
         success: false,
@@ -23,7 +44,6 @@ export const addProduct = async (req, res) => {
       });
     }
 
-    // Find category by slug OR path
     const selectedCategory = await Category.findOne({
       $or: [
         { slug: productData.category },
@@ -38,7 +58,6 @@ export const addProduct = async (req, res) => {
       });
     }
 
-    // ✅ CHECK: This category MUST NOT have children (leaf only)
     const hasChildren = await Category.exists({
       parent: selectedCategory._id,
     });
@@ -50,33 +69,30 @@ export const addProduct = async (req, res) => {
       });
     }
 
-    // ✅ 2. UPLOAD MAIN IMAGES
+    /* ---------------- MAIN IMAGE UPLOAD ---------------- */
+
     const uploadedMain = await Promise.all(
       mainImages.map(async (file) => {
-        const result = await cloudinary.uploader.upload(file.path, {
-          resource_type: "image",
-          chunk_size: 6_000_000,
-          quality: "auto",
-          fetch_format: "auto",
-        });
+        const result = await uploadFromBuffer(file.buffer);
         return result.secure_url;
       })
     );
 
-    // ✅ 3. UPLOAD VARIANT IMAGES
-    const uploadedVariantUrls = await Promise.all(
-      variantFiles.map(async (file) => {
-        const result = await cloudinary.uploader.upload(file.path, {
-          resource_type: "image",
-          chunk_size: 6_000_000,
-          quality: "auto",
-          fetch_format: "auto",
-        });
-        return result.secure_url;
-      })
-    );
+    /* ---------------- SAFE VARIANT IMAGE HANDLING ---------------- */
 
-    // ✅ 4. MAP VARIANT IMAGES CORRECTLY
+    let uploadedVariantUrls = [];
+
+    if (variantFiles.length > 0) {
+      uploadedVariantUrls = await Promise.all(
+        variantFiles.map(async (file) => {
+          const result = await uploadFromBuffer(file.buffer);
+          return result.secure_url;
+        })
+      );
+    }
+
+    /* ---------------- SAFE VARIANT MAPPING ---------------- */
+
     let pointer = 0;
 
     productData.variants = (productData.variants || []).map((variant) => {
@@ -84,31 +100,37 @@ export const addProduct = async (req, res) => {
         ? variant.images.length
         : 0;
 
-      const urls = uploadedVariantUrls.slice(
-        pointer,
-        pointer + expectedCount
-      );
+      let urls = [];
 
-      pointer += expectedCount;
+      // 🔥 only map if files exist
+      if (uploadedVariantUrls.length > 0 && expectedCount > 0) {
+        urls = uploadedVariantUrls.slice(
+          pointer,
+          pointer + expectedCount
+        );
+        pointer += expectedCount;
+      }
 
       return {
-        colorName: variant.colorName,
+        colorName: variant.colorName || "",
         colorCode: variant.colorCode || "",
         pattern: variant.pattern || "",
         sizes: Array.isArray(variant.sizes) ? variant.sizes : [],
-        images: urls,
+        images: urls, // ✅ always safe
       };
     });
 
-    // ✅ 5. CREATE PRODUCT (ONLY CHILD CATEGORY STORED)
+    /* ---------------- CREATE PRODUCT ---------------- */
+
     const safeStock = Number(productData.stock || 0);
+
     const newProduct = await Product.create({
       ...productData,
       images: uploadedMain,
-      category: selectedCategory.slug,      // ✅ child slug
-      categoryId: selectedCategory._id,     // ✅ REQUIRED FIELD (THIS FIXES YOUR ERROR)
+      category: selectedCategory.slug,
+      categoryId: selectedCategory._id,
       seller_id: req.sellerId || null,
-      stock: safeStock   // ✅ THIS IS THE FIX
+      stock: safeStock,
     });
 
     return res.status(201).json({
@@ -116,12 +138,12 @@ export const addProduct = async (req, res) => {
       message: "Product added successfully",
       data: newProduct,
     });
+
   } catch (error) {
     console.error("Add Product Error:", error);
     return res.status(500).json({
       success: false,
-      message: "Internal Server Error",
-      error: error.message,
+      message: error.message || "Internal Server Error",
     });
   }
 };
